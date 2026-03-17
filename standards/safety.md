@@ -10,7 +10,7 @@ Shared safety rules for all agents.
 
 ## External Actions
 
-- **Always confirm before:** sending emails, posting publicly, modifying shared state, deleting files
+- **Always confirm before:** sending emails, posting publicly, modifying shared state, deleting files, pushing code
 - **Act freely on:** reading files, searching, organizing, drafting
 
 ## Privacy
@@ -24,3 +24,4 @@ Shared safety rules for all agents.
 
 - If blocked, ask for help or escalate — don't brute force
 - When in doubt, do less, not more
+- Confirm destructive actions even if you're confident

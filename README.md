@@ -1,62 +1,100 @@
 # OpenClaw Playbook
 
-A reference standard for OpenClaw multi-agent installs. Use it to bootstrap a new install or keep an existing one aligned over time.
+A reference standard, setup automation, and skill pack for OpenClaw multi-agent installs.
 
-This is a **guide, not an installer.** On an existing install, check structure and conventions — don't blindly overwrite files that may have been customized. The shared docs are starting templates; installs may diverge. The checklist defines *what should be true*, not a script to run mechanically.
+This repo serves three audiences:
 
-Designed for humans and LLMs alike. You can point an agent at the checklist as a recurring audit — it reports what's drifted and what needs attention, without clobbering anything.
+1. **Humans** reading or sharing the standard with others
+2. **Setup agents** bootstrapping a fresh install from scratch
+3. **Running agents** referencing conventions and using skills day-to-day
+
+## Quick start
+
+```bash
+git clone https://github.com/geekforbrains/openclaw-playbook.git
+cd openclaw-playbook
+./setup.sh
+```
+
+The setup script installs OpenClaw (patched fork), scaffolds `~/.openclaw/`, drops in config and templates, installs skills, and starts the gateway. You fill in `.env` with your API keys and Slack tokens, tweak `openclaw.json` for your agent's identity, and you're talking to your agent.
 
 ## Structure
 
 ```
-checklist.md                       # Setup & alignment checklist
-shared/                            # → ~/.openclaw/shared/
-  guide.md                         #   Conventions — agents, workspaces, projects, crons
-  config.md                        #   Config defaults and key decisions
-  cron.md                          #   Cron job patterns and delivery modes
-  safety.md                        #   Safety rules
-cron/                              # → agent workspace/cron/ (customize per agent)
-  daily_standup.md                 #   Orchestrator — morning project summary
-  project_dev.md                   #   Developer — GitHub issue queue worker
-  project_checkin.md               #   Orchestrator — project status check-in
-  system_audit.md                  #   Self-healing system standards audit
-scripts/                           # → agent workspace/scripts/
-  gh_has_issues.sh                 #   Gate — only run if repo has labeled issues
-  list_slack_channels.sh           #   Utility — fetch channel list from Slack API
+setup.sh                              # Automated install bootstrap (macOS/Linux)
+
+standards/                             # Source of truth — referenced by URL, not copied
+  guide.md                             #   Organization, naming, workspace conventions
+  config.md                            #   Config reference and key decisions
+  cron.md                              #   Cron conventions, delivery modes, gates
+  safety.md                            #   Safety rules for all agents
+
+templates/                             # Copied + customized during setup
+  openclaw.json                        #   Baseline config (one agent, stubs)
+  .env.example                         #   All env vars with placeholders
+  SHARED.md                            #   Global prompt — install identity + pointers
+  AGENTS.md                            #   Per-agent personality template
+  MEMORY.md                            #   Memory seed structure
+
+skills/                                # Copied to ~/.openclaw/skills/ during setup
+  slack-directory/                     #   Resolve Slack users/channels by name or ID
+  cron-manager/                        #   Create and audit cron jobs per conventions
+  system-audit/                        #   Audit install health and standards compliance
+  agent-creator/                       #   Scaffold new agents (dirs, config, templates)
+
+examples/                              # Reference only — not auto-deployed
+  cron/                                #   Sample cron prompt templates
+  scripts/                             #   Sample gate scripts
 ```
 
-## Setup
+## How the pieces fit
 
-```bash
-git clone <repo-url>
-cd openclaw-playbook
+### Standards (generic, lives in this repo)
+
+The `standards/` directory defines how we structure and maintain OpenClaw installs. These docs are generic — not specific to any install. Running agents fetch the latest version from GitHub when they need to check conventions:
+
+```
+https://raw.githubusercontent.com/geekforbrains/openclaw-playbook/main/standards/guide.md
 ```
 
-Then follow [`checklist.md`](checklist.md). It walks through every step from shared docs to agent workspaces to cron jobs.
+This avoids stale copies on disk. Standards evolve in one place and every install picks up changes automatically.
 
-For a **new install**, work through the checklist in order — it bootstraps everything from scratch.
+### Templates (copied + customized per install)
 
-For an **existing install**, use the checklist as an audit. Check each item, note what's drifted, and decide what to fix. Don't assume every mismatch is wrong — some may be intentional customizations.
+The `templates/` directory contains starting-point files that get personalized during setup. Once customized, the install's copy is authoritative — not the repo's.
 
-For **ongoing alignment**, set up a cron job that runs an agent against the checklist periodically. The agent can diff the install against the standard and report back (or auto-fix) as needed.
+### Skills (copied to install, kept aligned)
 
-## Key conventions
+Skills in `skills/` get copied to `~/.openclaw/skills/` and are available to all agents. They provide deterministic tooling (Slack lookups, cron management, audits) so agents don't have to memorize conventions — the skills enforce them.
 
-- **Crons over heartbeat** — heartbeat is disabled. Isolated cron jobs are cheaper and more predictable.
-- **Open by default** — Slack channels and DMs are open to all agents. Tighten per-channel with `requireMention`, not globally.
-- **`NO_REPLY` for silent crons** — when there's nothing to report, the agent replies `NO_REPLY` to suppress delivery.
-- **Gate scripts** — high-frequency crons check cheaply before waking the LLM.
-- **Secrets in `.env`** — all API keys and tokens in one place, referenced via `${VAR}` in config.
-- **UPPERCASE = injected** — `AGENTS.md`, `SOUL.md`, `USER.md`, etc. are auto-loaded by OpenClaw. Everything else lowercase.
+### Examples (browse, don't deploy)
 
-## File naming
+Sample cron prompts and gate scripts. Reference these when creating new crons for your install. Every install's crons will be unique to their workload.
 
-- **UPPERCASE.md** — auto-injected into agent context by OpenClaw every turn
-- **lowercase.md** — reference docs read on demand
+## Adding an agent
 
-Injected files: `AGENTS.md`, `SOUL.md`, `USER.md`, `IDENTITY.md`, `TOOLS.md`, `HEARTBEAT.md`, `MEMORY.md`, `BOOT.md`, `BOOTSTRAP.md`
+After initial setup with one agent, adding another is:
 
-Note the uppercase files are already created and maintained by OpenClaw. Noted here for clarity.
+1. Add Slack bot + app tokens to `~/.openclaw/.env`
+2. Copy the agent block in `openclaw.json` — change `id`, `identity`, tokens
+3. Add a binding entry
+4. Run the `agent-creator` skill (or manually: `mkdir -p ~/.openclaw/agents/<name>/workspace/{memory,cron,skills,output,data,tmp}`)
+5. Customize `AGENTS.md` in the new workspace
+6. Restart the gateway
+
+See `standards/guide.md` for full conventions.
+
+## Patched fork
+
+This playbook assumes the [patched OpenClaw fork](https://github.com/geekforbrains/openclaw). The `custom` branch adds:
+
+| Patch | Purpose |
+|-------|---------|
+| `feat/cron-gate` | Gate option for deterministic pre-run checks |
+| `feat/require-mention-threads` | Require @mention in threads |
+| `feat/shared-bootstrap` | Load `~/.openclaw/SHARED.md` as global prompt |
+
+Stock OpenClaw works too — you just won't have gates, thread mention control, or the shared bootstrap file.
 
 ## License
 

@@ -1,0 +1,70 @@
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "anthropic/claude-opus-4-6",
+        "fallbacks": ["openai/gpt-5.4"]
+      },
+      "maxConcurrent": 1,
+      "thinkingDefault": "adaptive",
+      "compaction": {
+        "mode": "safeguard"
+      },
+      "heartbeat": {
+        "every": "0m"
+      },
+      "skipBootstrap": true
+    },
+    "list": [
+      {
+        "id": "AGENT_ID",
+        "workspace": "AGENT_WORKSPACE",
+        "agentDir": "AGENT_DIR",
+        "identity": { "name": "AGENT_DISPLAY_NAME", "emoji": "AGENT_EMOJI" }
+      }
+    ]
+  },
+
+  "channels": {
+    "slack": {
+      "mode": "socket",
+      "webhookPath": "/slack/events",
+      "enabled": true,
+      "userTokenReadOnly": true,
+      "groupPolicy": "open",
+      "dmPolicy": "allowlist",
+      "allowFrom": ["SLACK_USER_ID"],
+      "dm": {
+        "enabled": true
+      },
+      "nativeStreaming": true,
+      "streaming": "partial",
+      "replyToMode": "first",
+      "typingReaction": "eyes",
+      "requireMention": true,
+      "requireMentionInThreads": true,
+      "accounts": {
+        "AGENT_ID": {
+          "botToken": "${SLACK_BOT_TOKEN_AGENT1}",
+          "appToken": "${SLACK_APP_TOKEN_AGENT1}"
+        }
+      },
+      "defaultAccount": "AGENT_ID"
+    }
+  },
+
+  "tools": {
+    "profile": "full"
+  },
+
+  "bindings": [
+    {
+      "agentId": "AGENT_ID",
+      "match": { "channel": "slack", "accountId": "AGENT_ID" }
+    }
+  ],
+
+  "skills": {
+    "entries": []
+  }
+}

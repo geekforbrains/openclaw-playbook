@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 # Gate script: exits 0 if the repo has open issues with the given label, 1 otherwise.
-# Usage: gh-has-issues.sh <owner/repo> <label>
-#
-# Examples:
-#   gh-has-issues.sh myorg/myproject ready
-#   gh-has-issues.sh myorg/myproject "bug"
+# Usage: gh_has_issues.sh <owner/repo> <label>
 
 set -euo pipefail
 
-REPO="${1:?Usage: gh-has-issues.sh <owner/repo> <label>}"
-LABEL="${2:?Usage: gh-has-issues.sh <owner/repo> <label>}"
+REPO="${1:?Usage: gh_has_issues.sh <owner/repo> <label>}"
+LABEL="${2:?Usage: gh_has_issues.sh <owner/repo> <label>}"
 
 COUNT=$(gh issue list --repo "$REPO" --label "$LABEL" --state open --json number --jq 'length')
 
