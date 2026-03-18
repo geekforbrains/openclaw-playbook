@@ -5,8 +5,25 @@ Sensible defaults and key decisions for `openclaw.json`. For the full field refe
 ## Principles
 
 - **All secrets in `.env`** — `openclaw.json` uses `${VAR}` references. Never hardcode keys.
-- **Open by default** — channels and DMs are open. Tighten per-channel with `requireMention`, not globally.
+- **Deny by default** — agents get no tools unless explicitly allowlisted. Open up per-agent based on role.
 - **Crons over heartbeat** — heartbeat runs in the main session and pays full context cost every tick. Disable it; use isolated cron jobs instead.
+
+## Gateway
+
+Every install must have loopback binding and token auth. No exceptions, even for local-only setups.
+
+```json
+{
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "auth": { "mode": "token", "token": "${OPENCLAW_GATEWAY_TOKEN}" }
+  }
+}
+```
+
+Generate the token during setup: `openssl rand -hex 32`
 
 ## Agent Defaults
 
@@ -33,18 +50,43 @@ Key decisions:
 - **`heartbeat.every: "0m"`** — disabled. Use isolated cron jobs instead.
 - **`compaction.mode: "safeguard"`** — compacts context when approaching limits.
 
-## Gateway
+## Tool Policy
+
+Every agent starts fully locked down. Open capabilities per-agent based on what the role requires.
 
 ```json
 {
-  "gateway": {
-    "port": 18789,
-    "mode": "local",
-    "bind": "loopback",
-    "auth": { "mode": "token", "token": "${OPENCLAW_GATEWAY_TOKEN}" }
+  "tools": {
+    "profile": "messaging",
+    "allow": [],
+    "deny": ["*"],
+    "fs": { "workspaceOnly": true },
+    "exec": { "security": "deny" },
+    "elevated": { "enabled": false }
   }
 }
 ```
+
+Override per-agent in `agents.list[].tools`:
+
+```json
+{
+  "id": "researcher",
+  "tools": {
+    "allow": ["web_search", "web_fetch", "read", "write", "message", "cron"],
+    "deny": ["exec", "group:automation", "group:runtime", "sessions_spawn", "gateway"]
+  }
+}
+```
+
+Use allowlists so new tools/features are denied by default. The `deny` list is explicit about high-risk tools to prevent accidental enablement.
+
+### Guidelines
+
+- **Favor plugin tools over exec** — if an agent has a specific job, write a plugin tool for it. Schema-validated inputs, no shell injection risk, deterministic behavior.
+- **Don't document tools in prompt files** — tool names and descriptions are injected at runtime. Duplicating them in AGENTS.md adds noise and goes stale.
+- **`cron` tool** — add to any agent that users may ask to schedule work. The shared cron-manager skill provides conventions.
+- **`gateway` and `sessions_spawn`** — control plane tools. Almost never needed outside the admin agent.
 
 ## Channels (Slack)
 
@@ -62,24 +104,17 @@ Key decisions:
       "replyToMode": "first",
       "requireMention": true,
       "requireMentionInThreads": true,
-      "accounts": {
-        "<agent-name>": {
-          "botToken": "${SLACK_BOT_TOKEN_<AGENT_NAME>}",
-          "appToken": "${SLACK_APP_TOKEN_<AGENT_NAME>}"
-        }
-      },
-      "defaultAccount": "<agent-name>"
+      "accounts": {}
     }
   }
 }
 ```
 
 Key decisions:
-- **`groupPolicy: "open"`** — agents can respond in any channel. Use per-channel `requireMention` for noisy channels.
+- **`groupPolicy: "open"`** — agents can respond in any channel they're added to. No friction for users.
 - **`dmPolicy: "allowlist"`** — DMs restricted to listed user IDs.
-- **`requireMention: true`** + **`requireMentionInThreads: true`** — agents only respond when @mentioned. Prevents noise in busy channels and threads.
-- **`replyToMode: "first"`** — channel replies go in a thread under the original message. Required for `nativeStreaming`.
-- **One account per agent** — each agent has its own Slack app. Non-default agents need a binding.
+- **`requireMention: true`** + **`requireMentionInThreads: true`** — agents only respond when @mentioned.
+- **One Slack app per agent** — each gets its own identity via separate bot/app tokens.
 
 ## Bindings
 
@@ -93,25 +128,19 @@ Route each agent's Slack account to it:
 }
 ```
 
-## Tools
+## Skills
 
-```json
-{
-  "tools": {
-    "profile": "full"
-  }
-}
-```
+Precedence (highest first):
 
-Agents get all tools by default. Narrow per-agent via `agents.list[].tools.profile` only if needed.
+1. `<workspace>/skills/` — agent-specific (default location for new skills)
+2. `~/.openclaw/skills/` — shared (promote here only when multiple agents need it)
+3. Bundled skills (only those in `skills.allowBundled` are loaded)
+
+Skills are agent-specific by default. Only promote to shared when multiple agents need the same capability.
 
 ## Auth Profiles
 
-Each agent has an `auth-profiles.json` in its `agent/` directory. Don't pre-populate — credentials are auto-synced at runtime:
-
-- **Anthropic:** resolved from `auth.profiles` in `openclaw.json` (uses `ANTHROPIC_API_KEY` from `.env`)
-- **OpenAI:** OAuth tokens synced automatically
-- **Multi-agent fallback:** agents fall back to the primary agent's credentials if their own are missing
+Each agent has an `auth-profiles.json` in its `agent/` directory. Don't pre-populate — credentials are auto-synced at runtime.
 
 ## Environment Variables
 
@@ -121,7 +150,6 @@ Each agent has an `auth-profiles.json` in its `agent/` directory. Don't pre-popu
 # AI providers
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
-GEMINI_API_KEY=
 
 # Gateway
 OPENCLAW_GATEWAY_TOKEN=<generate with: openssl rand -hex 32>

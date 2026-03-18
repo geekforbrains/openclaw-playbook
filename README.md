@@ -6,7 +6,7 @@ This repo serves three audiences:
 
 1. **Humans** reading or sharing the standard with others
 2. **Setup agents** bootstrapping a fresh install from scratch
-3. **Running agents** referencing conventions and using skills day-to-day
+3. **Running agents** referencing conventions day-to-day
 
 ## Quick start
 
@@ -16,7 +16,7 @@ cd openclaw-playbook
 ./setup.sh
 ```
 
-The setup script installs OpenClaw (patched fork), scaffolds `~/.openclaw/`, drops in config and templates, installs skills, and starts the gateway. You fill in `.env` with your API keys and Slack tokens, tweak `openclaw.json` for your agent's identity, and you're talking to your agent.
+Setup scaffolds two agents — an **admin** (full access) and a **researcher** (constrained) — to demonstrate the security model. You fill in `.env` with your API keys and Slack tokens, tweak configs for your team, and you're running.
 
 ## Structure
 
@@ -25,64 +25,76 @@ setup.sh                              # Automated install bootstrap (macOS/Linux
 
 standards/                             # Source of truth — referenced by URL, not copied
   guide.md                             #   Organization, naming, workspace conventions
-  config.md                            #   Config reference and key decisions
+  config.md                            #   Config reference, tool policy, gateway security
   cron.md                              #   Cron conventions, delivery modes, gates
-  safety.md                            #   Safety rules for all agents
+  safety.md                            #   Safety model — structural + behavioral
 
 templates/                             # Copied + customized during setup
-  openclaw.json                        #   Baseline config (one agent, stubs)
+  openclaw.json                        #   Baseline config (admin + researcher agents)
   .env.example                         #   All env vars with placeholders
-  SHARED.md                            #   Global prompt — install identity + pointers
-  AGENTS.md                            #   Per-agent personality template
+  SHARED.md                            #   Global prompt — safety, team context, workspace
+  AGENTS.md                            #   Generic per-agent template
+  ADMIN.md                             #   Admin agent template (full access)
+  RESEARCHER.md                        #   Researcher agent template (constrained)
   MEMORY.md                            #   Memory seed structure
 
-skills/                                # Copied to ~/.openclaw/skills/ during setup
-  slack-directory/                     #   Resolve Slack users/channels by name or ID
-  cron-manager/                        #   Create and audit cron jobs per conventions
-  system-audit/                        #   Audit install health and standards compliance
-  agent-creator/                       #   Scaffold new agents (dirs, config, templates)
+skills/                                # Shared skills — copied to ~/.openclaw/skills/
+  cron-manager/                        #   Cron job conventions (guidance only, no scripts)
 
 examples/                              # Reference only — not auto-deployed
   cron/                                #   Sample cron prompt templates
   scripts/                             #   Sample gate scripts
 ```
 
+## Security Model
+
+Agents are **locked down by default**. Every agent starts with all tools denied and capabilities are allowlisted per-agent based on role.
+
+| Concept | Default | Open up when... |
+|---------|---------|-----------------|
+| Tools | All denied | Agent's role requires specific tools |
+| Exec | Denied | Only for admin agent |
+| Filesystem | Workspace only | Agent needs cross-workspace access |
+| Gateway/cron management | Denied | Only for admin agent |
+| Sub-agent spawning | Denied | Agent needs orchestration |
+
+The admin agent has full access and can build plugin tools and skills for other agents. Constrained agents get only what they need — no exec, no shell, just their allowlisted tools and workspace.
+
+See `standards/safety.md` for the full safety model and `standards/config.md` for tool policy configuration.
+
 ## How the pieces fit
 
 ### Standards (generic, lives in this repo)
 
-The `standards/` directory defines how we structure and maintain OpenClaw installs. These docs are generic — not specific to any install. Running agents fetch the latest version from GitHub when they need to check conventions:
+The `standards/` directory defines how we structure and maintain OpenClaw installs. Running agents fetch the latest version from GitHub when they need to check conventions:
 
 ```
 https://raw.githubusercontent.com/geekforbrains/openclaw-playbook/main/standards/guide.md
 ```
 
-This avoids stale copies on disk. Standards evolve in one place and every install picks up changes automatically.
-
 ### Templates (copied + customized per install)
 
-The `templates/` directory contains starting-point files that get personalized during setup. Once customized, the install's copy is authoritative — not the repo's.
+The `templates/` directory contains starting-point files that get personalized during setup. ADMIN.md and RESEARCHER.md show the two ends of the access spectrum — copy the one closest to your needs when adding new agents.
 
-### Skills (copied to install, kept aligned)
+### Skills (shared across agents)
 
-Skills in `skills/` get copied to `~/.openclaw/skills/` and are available to all agents. They provide deterministic tooling (Slack lookups, cron management, audits) so agents don't have to memorize conventions — the skills enforce them.
+Skills in `skills/` get copied to `~/.openclaw/skills/` and are available to all agents. Agent-specific skills go in the agent's `workspace/skills/` directory instead.
+
+Skills are **guidance only** by default (just a SKILL.md). For agents that need executable capabilities, favor plugin tools over exec-based scripts.
 
 ### Examples (browse, don't deploy)
 
-Sample cron prompts and gate scripts. Reference these when creating new crons for your install. Every install's crons will be unique to their workload.
+Sample cron prompts and gate scripts. Reference these when creating new crons for your install.
 
 ## Adding an agent
 
-After initial setup with one agent, adding another is:
-
-1. Add Slack bot + app tokens to `~/.openclaw/.env`
-2. Copy the agent block in `openclaw.json` — change `id`, `identity`, tokens
-3. Add a binding entry
-4. Run the `agent-creator` skill (or manually: `mkdir -p ~/.openclaw/agents/<name>/workspace/{memory,cron,skills,output,data,tmp}`)
-5. Customize `AGENTS.md` in the new workspace
-6. Restart the gateway
-
-See `standards/guide.md` for full conventions.
+1. Copy the closest template (ADMIN.md or RESEARCHER.md) and customize it
+2. Add agent config to `openclaw.json` — start from deny-all, allowlist only needed tools
+3. Scaffold the workspace: `mkdir -p ~/.openclaw/agents/<name>/workspace/{memory,cron,skills,output,data,tmp}`
+4. Create a Slack app with its own tokens (see `standards/guide.md`)
+5. Add a binding entry in config
+6. Update every existing agent's "Other Agents" section in their AGENTS.md
+7. Restart the gateway
 
 ## Patched fork
 

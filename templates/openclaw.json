@@ -1,4 +1,11 @@
 {
+  "gateway": {
+    "port": 18789,
+    "mode": "local",
+    "bind": "loopback",
+    "auth": { "mode": "token", "token": "${OPENCLAW_GATEWAY_TOKEN}" }
+  },
+
   "agents": {
     "defaults": {
       "model": {
@@ -7,20 +14,43 @@
       },
       "maxConcurrent": 1,
       "thinkingDefault": "adaptive",
-      "compaction": {
-        "mode": "safeguard"
-      },
-      "heartbeat": {
-        "every": "0m"
-      },
-      "skipBootstrap": true
+      "compaction": { "mode": "safeguard" },
+      "heartbeat": { "every": "0m" },
+      "skipBootstrap": true,
+      "tools": {
+        "profile": "messaging",
+        "allow": [],
+        "deny": ["*"],
+        "fs": { "workspaceOnly": true },
+        "exec": { "security": "deny" },
+        "elevated": { "enabled": false }
+      }
     },
     "list": [
       {
-        "id": "AGENT_ID",
-        "workspace": "AGENT_WORKSPACE",
-        "agentDir": "AGENT_DIR",
-        "identity": { "name": "AGENT_DISPLAY_NAME", "emoji": "AGENT_EMOJI" }
+        "id": "ADMIN_ID",
+        "workspace": "ADMIN_WORKSPACE",
+        "agentDir": "ADMIN_DIR",
+        "identity": { "name": "ADMIN_DISPLAY_NAME", "emoji": "🛡️" },
+        "tools": {
+          "profile": "full",
+          "allow": [],
+          "deny": [],
+          "fs": { "workspaceOnly": false },
+          "exec": { "security": "allow" },
+          "elevated": { "enabled": true }
+        }
+      },
+      {
+        "id": "researcher",
+        "workspace": "RESEARCHER_WORKSPACE",
+        "agentDir": "RESEARCHER_DIR",
+        "identity": { "name": "Researcher", "emoji": "🔍" },
+        "tools": {
+          "allow": ["web_search", "web_fetch", "read", "write", "message", "cron"],
+          "deny": ["exec", "group:automation", "group:runtime", "sessions_spawn", "gateway"],
+          "fs": { "workspaceOnly": true }
+        }
       }
     ]
   },
@@ -34,9 +64,7 @@
       "groupPolicy": "open",
       "dmPolicy": "allowlist",
       "allowFrom": ["SLACK_USER_ID"],
-      "dm": {
-        "enabled": true
-      },
+      "dm": { "enabled": true },
       "nativeStreaming": true,
       "streaming": "partial",
       "replyToMode": "first",
@@ -44,24 +72,22 @@
       "requireMention": true,
       "requireMentionInThreads": true,
       "accounts": {
-        "AGENT_ID": {
-          "botToken": "${SLACK_BOT_TOKEN_AGENT1}",
-          "appToken": "${SLACK_APP_TOKEN_AGENT1}"
+        "ADMIN_ID": {
+          "botToken": "${SLACK_BOT_TOKEN_ADMIN}",
+          "appToken": "${SLACK_APP_TOKEN_ADMIN}"
+        },
+        "researcher": {
+          "botToken": "${SLACK_BOT_TOKEN_RESEARCHER}",
+          "appToken": "${SLACK_APP_TOKEN_RESEARCHER}"
         }
       },
-      "defaultAccount": "AGENT_ID"
+      "defaultAccount": "ADMIN_ID"
     }
-  },
-
-  "tools": {
-    "profile": "full"
   },
 
   "bindings": [
-    {
-      "agentId": "AGENT_ID",
-      "match": { "channel": "slack", "accountId": "AGENT_ID" }
-    }
+    { "agentId": "ADMIN_ID", "match": { "channel": "slack", "accountId": "ADMIN_ID" } },
+    { "agentId": "researcher", "match": { "channel": "slack", "accountId": "researcher" } }
   ],
 
   "skills": {

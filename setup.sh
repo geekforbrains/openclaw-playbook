@@ -5,14 +5,16 @@
 # What this does:
 #   1. Clones and builds the patched OpenClaw fork
 #   2. Bootstraps ~/.openclaw/ via openclaw onboard
-#   3. Installs baseline config, templates, and skills
-#   4. Starts the gateway and runs a health check
+#   3. Creates admin + researcher agent workspaces
+#   4. Installs config, templates, and shared skills
+#   5. Generates gateway token
+#   6. Runs a health check
 #
 # Usage:
-#   ./setup.sh                          # Interactive — prompts for agent details
+#   ./setup.sh                          # Interactive — prompts for admin agent details
 #   ./setup.sh --agent-id hermy \
 #              --agent-name "Hermy" \
-#              --agent-emoji "🦀"       # Non-interactive
+#              --agent-emoji "🛡️"       # Non-interactive
 
 set -euo pipefail
 
@@ -37,7 +39,7 @@ error() { echo -e "${RED}[error]${NC} $1"; exit 1; }
 
 AGENT_ID=""
 AGENT_NAME=""
-AGENT_EMOJI="🤖"
+AGENT_EMOJI="🛡️"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -58,16 +60,18 @@ if [[ -z "$AGENT_ID" ]]; then
   echo ""
   echo -e "${BLUE}OpenClaw Playbook Setup${NC}"
   echo ""
-  read -rp "Agent ID (lowercase, e.g. hermy): " AGENT_ID
+  echo "This sets up an admin agent (full access) and a researcher agent (constrained)."
+  echo ""
+  read -rp "Admin agent ID (lowercase, e.g. hermy): " AGENT_ID
   [[ -z "$AGENT_ID" ]] && error "Agent ID is required"
 fi
 
 if [[ -z "$AGENT_NAME" ]]; then
-  read -rp "Agent display name (e.g. Hermy): " AGENT_NAME
+  read -rp "Admin agent display name (e.g. Hermy): " AGENT_NAME
   [[ -z "$AGENT_NAME" ]] && AGENT_NAME="$AGENT_ID"
 fi
 
-read -rp "Agent emoji (default: 🤖): " input_emoji
+read -rp "Admin agent emoji (default: 🛡️): " input_emoji
 [[ -n "$input_emoji" ]] && AGENT_EMOJI="$input_emoji"
 
 echo ""
@@ -149,24 +153,37 @@ fi
 
 echo ""
 
-# --- Step 3: Create agent workspace ---
+# --- Step 3: Create agent workspaces ---
 
-AGENT_BASE="$OPENCLAW_DIR/agents/$AGENT_ID"
-AGENT_WORKSPACE="$AGENT_BASE/workspace"
-AGENT_AGENT_DIR="$AGENT_BASE/agent"
+create_agent_workspace() {
+  local agent_id="$1"
+  local base="$OPENCLAW_DIR/agents/$agent_id"
+  local workspace="$base/workspace"
 
-if [[ -d "$AGENT_WORKSPACE" ]]; then
-  info "Agent workspace already exists at $AGENT_WORKSPACE"
-else
-  info "Creating agent workspace..."
-  mkdir -p "$AGENT_WORKSPACE"/{memory,cron,skills,output,data,tmp}
-  mkdir -p "$AGENT_AGENT_DIR"
-  ok "Created $AGENT_WORKSPACE"
-fi
+  if [[ -d "$workspace" ]]; then
+    info "Agent workspace already exists at $workspace"
+  else
+    info "Creating workspace for $agent_id..."
+    mkdir -p "$workspace"/{memory,cron,skills,output,data,tmp}
+    mkdir -p "$base/agent"
+    ok "Created $workspace"
+  fi
+}
+
+# Admin agent
+create_agent_workspace "$AGENT_ID"
+
+# Researcher agent
+create_agent_workspace "researcher"
+
+echo ""
 
 # --- Step 4: Install templates ---
 
 info "Installing templates..."
+
+ADMIN_WORKSPACE="$OPENCLAW_DIR/agents/$AGENT_ID/workspace"
+RESEARCHER_WORKSPACE="$OPENCLAW_DIR/agents/researcher/workspace"
 
 # SHARED.md
 if [[ ! -f "$OPENCLAW_DIR/SHARED.md" ]]; then
@@ -176,50 +193,69 @@ else
   info "SHARED.md already exists — skipping"
 fi
 
-# AGENTS.md (per-agent)
-if [[ ! -f "$AGENT_WORKSPACE/AGENTS.md" ]]; then
-  sed "s/<Name>/$AGENT_NAME/g; s/<Emoji>/$AGENT_EMOJI/g" \
-    "$SCRIPT_DIR/templates/AGENTS.md" > "$AGENT_WORKSPACE/AGENTS.md"
-  ok "Installed AGENTS.md for $AGENT_NAME"
+# Admin AGENTS.md
+if [[ ! -f "$ADMIN_WORKSPACE/AGENTS.md" ]]; then
+  cp "$SCRIPT_DIR/templates/ADMIN.md" "$ADMIN_WORKSPACE/AGENTS.md"
+  ok "Installed AGENTS.md for admin ($AGENT_NAME)"
 else
-  info "AGENTS.md already exists — skipping"
+  info "Admin AGENTS.md already exists — skipping"
 fi
 
-# MEMORY.md (per-agent)
-if [[ ! -f "$AGENT_WORKSPACE/MEMORY.md" ]]; then
-  sed "s/<company>/your company/g" \
-    "$SCRIPT_DIR/templates/MEMORY.md" > "$AGENT_WORKSPACE/MEMORY.md"
-  ok "Installed MEMORY.md"
+# Researcher AGENTS.md
+if [[ ! -f "$RESEARCHER_WORKSPACE/AGENTS.md" ]]; then
+  cp "$SCRIPT_DIR/templates/RESEARCHER.md" "$RESEARCHER_WORKSPACE/AGENTS.md"
+  ok "Installed AGENTS.md for Researcher"
 else
-  info "MEMORY.md already exists — skipping"
+  info "Researcher AGENTS.md already exists — skipping"
 fi
 
-# .env
+# MEMORY.md for both agents
+for ws in "$ADMIN_WORKSPACE" "$RESEARCHER_WORKSPACE"; do
+  if [[ ! -f "$ws/MEMORY.md" ]]; then
+    cp "$SCRIPT_DIR/templates/MEMORY.md" "$ws/MEMORY.md"
+    ok "Installed MEMORY.md in $ws"
+  fi
+done
+
+echo ""
+
+# --- Step 5: Generate gateway token and install .env ---
+
 if [[ ! -f "$OPENCLAW_DIR/.env" ]]; then
+  info "Generating gateway token..."
+  GATEWAY_TOKEN=$(openssl rand -hex 32)
   AGENT_UPPER=$(echo "$AGENT_ID" | tr '[:lower:]' '[:upper:]')
-  sed "s/AGENT1/$AGENT_UPPER/g" \
+
+  sed "s/ADMIN/$AGENT_UPPER/g" \
     "$SCRIPT_DIR/templates/.env.example" > "$OPENCLAW_DIR/.env"
-  ok "Installed .env (fill in your keys!)"
+
+  # Write the generated gateway token
+  sed -i.bak "s/^OPENCLAW_GATEWAY_TOKEN=$/OPENCLAW_GATEWAY_TOKEN=$GATEWAY_TOKEN/" "$OPENCLAW_DIR/.env"
+  rm -f "$OPENCLAW_DIR/.env.bak"
+
+  ok "Installed .env with generated gateway token"
+  warn "Fill in your API keys and Slack tokens: $OPENCLAW_DIR/.env"
 else
   info ".env already exists — skipping"
+
+  # Ensure gateway token exists
+  if grep -q "^OPENCLAW_GATEWAY_TOKEN=$" "$OPENCLAW_DIR/.env" 2>/dev/null; then
+    GATEWAY_TOKEN=$(openssl rand -hex 32)
+    sed -i.bak "s/^OPENCLAW_GATEWAY_TOKEN=$/OPENCLAW_GATEWAY_TOKEN=$GATEWAY_TOKEN/" "$OPENCLAW_DIR/.env"
+    rm -f "$OPENCLAW_DIR/.env.bak"
+    ok "Generated missing gateway token"
+  fi
 fi
 
 echo ""
 
-# --- Step 5: Merge config ---
+# --- Step 6: Install config ---
 
 info "Installing config..."
 
-# Read the existing config (from onboard) and merge our template on top
-if [[ -f "$CONFIG_FILE" ]] 2>/dev/null; then
-  CONFIG_FILE="$OPENCLAW_DIR/openclaw.json"
-else
-  CONFIG_FILE="$OPENCLAW_DIR/openclaw.json"
-fi
-
+CONFIG_FILE="$OPENCLAW_DIR/openclaw.json"
 AGENT_UPPER=$(echo "$AGENT_ID" | tr '[:lower:]' '[:upper:]')
 
-# Generate the config from template with substitutions
 python3 -c "
 import json, sys, os
 
@@ -235,37 +271,39 @@ home = os.path.expanduser('~')
 with open(template_path) as f:
     template = json.load(f)
 
-# Apply substitutions to agent list
+# Apply substitutions to admin agent
 for agent in template.get('agents', {}).get('list', []):
-    if agent.get('id') == 'AGENT_ID':
+    if agent.get('id') == 'ADMIN_ID':
         agent['id'] = agent_id
         agent['workspace'] = f'{home}/.openclaw/agents/{agent_id}/workspace'
         agent['agentDir'] = f'{home}/.openclaw/agents/{agent_id}/agent'
         agent['identity'] = {'name': agent_name, 'emoji': agent_emoji}
+    elif agent.get('id') == 'researcher':
+        agent['workspace'] = f'{home}/.openclaw/agents/researcher/workspace'
+        agent['agentDir'] = f'{home}/.openclaw/agents/researcher/agent'
 
 # Fix Slack accounts
 slack = template.get('channels', {}).get('slack', {})
 accounts = slack.get('accounts', {})
-if 'AGENT_ID' in accounts:
+if 'ADMIN_ID' in accounts:
     accounts[agent_id] = {
         'botToken': f'\${SLACK_BOT_TOKEN_{agent_upper}}',
         'appToken': f'\${SLACK_APP_TOKEN_{agent_upper}}'
     }
-    del accounts['AGENT_ID']
+    del accounts['ADMIN_ID']
 slack['defaultAccount'] = agent_id
 
 # Fix bindings
 for binding in template.get('bindings', []):
-    if binding.get('agentId') == 'AGENT_ID':
+    if binding.get('agentId') == 'ADMIN_ID':
         binding['agentId'] = agent_id
         binding['match']['accountId'] = agent_id
 
-# Load existing config if it exists and merge gateway/auth from it
+# Load existing config if it exists and preserve gateway/auth
 if os.path.exists(config_path):
     with open(config_path) as f:
         existing = json.load(f)
-    # Preserve onboard-generated sections
-    for key in ['gateway', 'auth', 'wizard', 'session']:
+    for key in ['auth', 'wizard', 'session']:
         if key in existing:
             template[key] = existing[key]
 
@@ -279,9 +317,9 @@ print('ok')
 
 echo ""
 
-# --- Step 6: Install skills ---
+# --- Step 7: Install shared skills ---
 
-info "Installing skills..."
+info "Installing shared skills..."
 
 SKILLS_DIR="$OPENCLAW_DIR/skills"
 mkdir -p "$SKILLS_DIR"
@@ -294,22 +332,18 @@ for skill_dir in "$SCRIPT_DIR"/skills/*/; do
     rm -rf "$target"
   fi
   cp -r "$skill_dir" "$target"
-  # Make scripts executable
-  find "$target/scripts" -name "*.py" -exec chmod +x {} \; 2>/dev/null || true
-  find "$target/scripts" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
-  ok "Installed skill: $skill_name"
+  ok "Installed shared skill: $skill_name"
 done
 
 echo ""
 
-# --- Step 7: Health check ---
+# --- Step 8: Health check ---
 
 info "Running health checks..."
 
 if command -v openclaw &>/dev/null; then
   ok "openclaw CLI available"
 
-  # Try doctor
   if openclaw doctor 2>/dev/null; then
     ok "openclaw doctor passed"
   else
@@ -327,6 +361,10 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Setup complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
+echo "Two agents scaffolded:"
+echo "  🛡️  $AGENT_NAME (admin — full access)"
+echo "  🔍 Researcher (constrained — web search + file access only)"
+echo ""
 echo "Next steps:"
 echo ""
 echo "  1. Fill in your API keys and Slack tokens:"
@@ -335,8 +373,9 @@ echo ""
 echo "  2. Set your Slack user ID in the config (allowFrom):"
 echo "     $OPENCLAW_DIR/openclaw.json"
 echo ""
-echo "  3. Customize your agent's personality:"
-echo "     $AGENT_WORKSPACE/AGENTS.md"
+echo "  3. Customize agent personalities:"
+echo "     $ADMIN_WORKSPACE/AGENTS.md"
+echo "     $RESEARCHER_WORKSPACE/AGENTS.md"
 echo ""
 echo "  4. Update SHARED.md with your team info:"
 echo "     $OPENCLAW_DIR/SHARED.md"
@@ -346,4 +385,6 @@ echo "     openclaw gateway run"
 echo ""
 echo "  6. Verify everything:"
 echo "     openclaw channels status --probe"
+echo ""
+echo "  7. Set up the daily system audit cron (see examples/cron/system_audit.md)"
 echo ""
