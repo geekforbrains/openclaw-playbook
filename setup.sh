@@ -56,7 +56,10 @@ done
 
 # --- Interactive prompts if not provided ---
 
+INTERACTIVE=false
+
 if [[ -z "$AGENT_ID" ]]; then
+  INTERACTIVE=true
   echo ""
   echo -e "${BLUE}OpenClaw Playbook Setup${NC}"
   echo ""
@@ -71,8 +74,10 @@ if [[ -z "$AGENT_NAME" ]]; then
   [[ -z "$AGENT_NAME" ]] && AGENT_NAME="$AGENT_ID"
 fi
 
-read -rp "Admin agent emoji (default: 🛡️): " input_emoji
-[[ -n "$input_emoji" ]] && AGENT_EMOJI="$input_emoji"
+if [[ "$INTERACTIVE" == true ]]; then
+  read -rp "Admin agent emoji (default: 🛡️): " input_emoji
+  [[ -n "$input_emoji" ]] && AGENT_EMOJI="$input_emoji"
+fi
 
 echo ""
 

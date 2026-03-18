@@ -16,7 +16,7 @@ cd openclaw-playbook
 ./setup.sh
 ```
 
-Setup scaffolds two agents — an **admin** (full access) and a **researcher** (constrained) — to demonstrate the security model. You fill in `.env` with your API keys and Slack tokens, tweak configs for your team, and you're running.
+Setup scaffolds two agents — an **admin** (full access) and a **researcher** (constrained) — to demonstrate the [security model](https://docs.openclaw.ai/gateway/security). You fill in `.env` with your API keys and Slack tokens, tweak configs for your team, and you're running.
 
 ## Structure
 
@@ -39,7 +39,7 @@ templates/                             # Copied + customized during setup
   MEMORY.md                            #   Memory seed structure
 
 skills/                                # Shared skills — copied to ~/.openclaw/skills/
-  cron-manager/                        #   Cron job conventions (guidance only, no scripts)
+  cron-manager/                        #   Cron job conventions (guidance only, no scripts) — see [cron docs](https://docs.openclaw.ai/automation/cron-jobs)
 
 examples/                              # Reference only — not auto-deployed
   cron/                                #   Sample cron prompt templates
@@ -80,7 +80,7 @@ The `templates/` directory contains starting-point files that get personalized d
 
 Skills in `skills/` get copied to `~/.openclaw/skills/` and are available to all agents. Agent-specific skills go in the agent's `workspace/skills/` directory instead.
 
-Skills are **guidance only** by default (just a SKILL.md). For agents that need executable capabilities, favor plugin tools over exec-based scripts.
+Skills are **guidance only** by default (just a SKILL.md). For agents that need executable capabilities, favor [plugin tools](https://docs.openclaw.ai/tools/plugin) over [exec](https://docs.openclaw.ai/tools/exec)-based scripts. See [creating skills](https://docs.openclaw.ai/tools/creating-skills) for authoring details.
 
 ### Examples (browse, don't deploy)
 
@@ -89,12 +89,12 @@ Sample cron prompts and gate scripts. Reference these when creating new crons fo
 ## Adding an agent
 
 1. Copy the closest template (ADMIN.md or RESEARCHER.md) and customize it
-2. Add agent config to `openclaw.json` — start from deny-all, allowlist only needed tools
-3. Scaffold the workspace: `mkdir -p ~/.openclaw/agents/<name>/workspace/{memory,cron,skills,output,data,tmp}`
-4. Create a Slack app with its own tokens (see `standards/guide.md`)
-5. Add a binding entry in config
+2. Add [agent config](https://docs.openclaw.ai/gateway/configuration-reference) to `openclaw.json` — start from deny-all, allowlist only needed tools
+3. Scaffold the [workspace](https://docs.openclaw.ai/concepts/agent-workspace): `mkdir -p ~/.openclaw/agents/<name>/workspace/{memory,cron,skills,output,data,tmp}`
+4. Create a [Slack app](https://docs.openclaw.ai/channels/slack) with its own tokens (see `standards/guide.md`)
+5. Add a [binding](https://docs.openclaw.ai/channels/channel-routing) entry in config
 6. Update every existing agent's "Other Agents" section in their AGENTS.md
-7. Restart the gateway
+7. Restart the [gateway](https://docs.openclaw.ai/gateway)
 
 ## Patched fork
 
@@ -102,9 +102,9 @@ This playbook assumes the [patched OpenClaw fork](https://github.com/geekforbrai
 
 | Patch | Purpose |
 |-------|---------|
-| `feat/cron-gate` | Gate option for deterministic pre-run checks |
-| `feat/require-mention-threads` | Require @mention in threads |
-| `feat/shared-bootstrap` | Load `~/.openclaw/SHARED.md` as global prompt |
+| `feat/cron-gate` | Gate option for deterministic pre-run checks — see [cron jobs](https://docs.openclaw.ai/automation/cron-jobs) |
+| `feat/require-mention-threads` | Require @mention in threads — see [Slack config](https://docs.openclaw.ai/channels/slack) |
+| `feat/shared-bootstrap` | Load `~/.openclaw/SHARED.md` as global prompt — see [system prompt](https://docs.openclaw.ai/concepts/system-prompt) |
 
 Stock OpenClaw works too — you just won't have gates, thread mention control, or the shared bootstrap file.
 

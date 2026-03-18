@@ -35,7 +35,7 @@ The agent `id` in config, the `agents/<name>/` directory, and the Slack `account
 
 ## Prompt Files
 
-All workspace files are optional. With `skipBootstrap: true`, OpenClaw won't auto-create workspace files — you control exactly what exists.
+All workspace files are optional. With [`skipBootstrap: true`](https://docs.openclaw.ai/concepts/system-prompt), OpenClaw won't auto-create workspace files — you control exactly what exists.
 
 | File | Location | Injected | Purpose |
 |------|----------|----------|---------|
@@ -101,7 +101,7 @@ Add the new agent to the "Other Agents" section of every existing agent's `AGENT
 
 ### 4. Slack app
 
-Each agent gets its own Slack app for a distinct identity:
+Each agent gets its own [Slack app](https://docs.openclaw.ai/channels/slack) for a distinct identity:
 
 1. Create a Slack app with Socket Mode enabled
 2. Required bot scopes: `chat:write`, `channels:history`, `channels:read`, `im:history`, `im:read`, `im:write`, `app_mentions:read`, `reactions:read`, `reactions:write`, `files:read`, `users:read`
@@ -119,9 +119,9 @@ Precedence (highest first):
 2. `~/.openclaw/skills/` — shared across all agents
 3. Bundled skills (only those in `skills.allowBundled` are loaded)
 
-**Skills are agent-specific by default.** Place new skills in the agent's `workspace/skills/` directory. Only promote to `~/.openclaw/skills/` when multiple agents need the same skill.
+**Skills are agent-specific by default.** Place new skills in the agent's `workspace/skills/` directory. Only promote to `~/.openclaw/skills/` when multiple agents need the same skill. See [skills](https://docs.openclaw.ai/tools/skills) and [creating skills](https://docs.openclaw.ai/tools/creating-skills).
 
-Skills that reference scripts need `exec` in the agent's tool allowlist. Skills that reference plugin tools don't need `exec` — the agent calls the tool directly. Prefer plugin tools for constrained agents.
+Skills that reference scripts need [`exec`](https://docs.openclaw.ai/tools/exec) in the agent's tool allowlist. Skills that reference [plugin tools](https://docs.openclaw.ai/tools/plugin) don't need `exec` — the agent calls the tool directly. Prefer plugin tools for constrained agents.
 
 ### Skill authoring — path patterns
 

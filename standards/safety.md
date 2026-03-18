@@ -6,12 +6,12 @@ Safety is enforced structurally through config (tool policies, allowlists, works
 
 These controls cannot be bypassed by the agent:
 
-- **Default deny** — all tools denied unless explicitly allowlisted per agent
-- **No exec by default** — only agents whose role requires it get `exec`
-- **Workspace isolation** — `fs.workspaceOnly: true` restricts file access to the agent's own workspace
-- **Plugin tools over exec** — custom plugin tools with schema-validated inputs eliminate shell injection risk
-- **Agent-specific skills** — each agent only sees skills in its own workspace plus shared skills
-- **Gateway auth** — loopback binding + token auth on every install
+- **Default deny** — all tools denied unless explicitly [allowlisted](https://docs.openclaw.ai/gateway/sandbox-vs-tool-policy-vs-elevated) per agent
+- **No exec by default** — only agents whose role requires it get [`exec`](https://docs.openclaw.ai/tools/exec)
+- **[Workspace](https://docs.openclaw.ai/concepts/agent-workspace) isolation** — `fs.workspaceOnly: true` restricts file access to the agent's own workspace
+- **[Plugin tools](https://docs.openclaw.ai/tools/plugin) over exec** — custom plugin tools with schema-validated inputs eliminate shell injection risk
+- **Agent-specific [skills](https://docs.openclaw.ai/tools/skills)** — each agent only sees skills in its own workspace plus shared skills
+- **[Gateway auth](https://docs.openclaw.ai/gateway/authentication)** — loopback binding + token auth on every install
 
 See `config.md` for implementation details.
 
@@ -38,4 +38,4 @@ Agents processing untrusted content (web pages, emails, public Slack channels) a
 - Only install skills and plugins from trusted sources
 - Audit plugin code before installation — plugins run in-process with the gateway (full trust)
 - Plugin deployment is an admin-level operation
-- Treat ClawHub skills as untrusted third-party code — review source before installing
+- Treat [ClawHub](https://docs.openclaw.ai/tools/clawhub) skills as untrusted third-party code — review source before installing

@@ -10,7 +10,7 @@ Sensible defaults and key decisions for `openclaw.json`. For the full field refe
 
 ## Gateway
 
-Every install must have loopback binding and token auth. No exceptions, even for local-only setups.
+Every install must have loopback binding and [token auth](https://docs.openclaw.ai/gateway/authentication). No exceptions, even for local-only setups.
 
 ```json
 {
@@ -46,13 +46,13 @@ Generate the token during setup: `openssl rand -hex 32`
 ```
 
 Key decisions:
-- **`skipBootstrap: true`** — OpenClaw won't auto-create workspace files. You control exactly what exists.
-- **`heartbeat.every: "0m"`** — disabled. Use isolated cron jobs instead.
-- **`compaction.mode: "safeguard"`** — compacts context when approaching limits.
+- **`skipBootstrap: true`** — OpenClaw won't auto-create workspace files. You control exactly what exists. See [system prompt](https://docs.openclaw.ai/concepts/system-prompt).
+- **`heartbeat.every: "0m"`** — disabled. Use isolated [cron jobs](https://docs.openclaw.ai/automation/cron-jobs) instead. See [cron vs heartbeat](https://docs.openclaw.ai/automation/cron-vs-heartbeat).
+- **`compaction.mode: "safeguard"`** — compacts context when approaching limits. See [compaction](https://docs.openclaw.ai/concepts/compaction).
 
 ## Tool Policy
 
-Every agent starts fully locked down. Open capabilities per-agent based on what the role requires.
+Every agent starts fully locked down. Open capabilities per-agent based on what the role requires. See [tool policy vs sandbox vs elevated](https://docs.openclaw.ai/gateway/sandbox-vs-tool-policy-vs-elevated).
 
 ```json
 {
@@ -83,10 +83,10 @@ Use allowlists so new tools/features are denied by default. The `deny` list is e
 
 ### Guidelines
 
-- **Favor plugin tools over exec** — if an agent has a specific job, write a plugin tool for it. Schema-validated inputs, no shell injection risk, deterministic behavior.
+- **Favor [plugin tools](https://docs.openclaw.ai/tools/plugin) over [exec](https://docs.openclaw.ai/tools/exec)** — if an agent has a specific job, write a plugin tool for it. Schema-validated inputs, no shell injection risk, deterministic behavior.
 - **Don't document tools in prompt files** — tool names and descriptions are injected at runtime. Duplicating them in AGENTS.md adds noise and goes stale.
-- **`cron` tool** — add to any agent that users may ask to schedule work. The shared cron-manager skill provides conventions.
-- **`gateway` and `sessions_spawn`** — control plane tools. Almost never needed outside the admin agent.
+- **`cron` tool** — add to any agent that users may ask to schedule work. The shared cron-manager skill provides conventions. See [cron jobs](https://docs.openclaw.ai/automation/cron-jobs).
+- **`gateway` and [`sessions_spawn`](https://docs.openclaw.ai/tools/subagents)** — control plane tools. Almost never needed outside the admin agent.
 
 ## Channels (Slack)
 
@@ -114,11 +114,11 @@ Key decisions:
 - **`groupPolicy: "open"`** — agents can respond in any channel they're added to. No friction for users.
 - **`dmPolicy: "allowlist"`** — DMs restricted to listed user IDs.
 - **`requireMention: true`** + **`requireMentionInThreads: true`** — agents only respond when @mentioned.
-- **One Slack app per agent** — each gets its own identity via separate bot/app tokens.
+- **One [Slack app](https://docs.openclaw.ai/channels/slack) per agent** — each gets its own identity via separate bot/app tokens.
 
 ## Bindings
 
-Route each agent's Slack account to it:
+Route each agent's Slack account to it. See [channel routing](https://docs.openclaw.ai/channels/channel-routing).
 
 ```json
 {

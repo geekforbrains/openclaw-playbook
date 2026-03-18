@@ -11,7 +11,7 @@ Snake case, agent-prefixed: `<agent>_<job_name>`. Prompt templates live at `work
 Every cron job must have:
 - `--model` — model name or alias
 - `--thinking` — `off`, `low`, `medium`, or `high`
-- `--session isolated` — always. Never `main` (heartbeat is disabled).
+- `--session isolated` — always. Never `main` ([heartbeat](https://docs.openclaw.ai/automation/cron-vs-heartbeat) is disabled).
 - `--message` referencing a markdown file — no large inline prompts
 
 ## Delivery Modes
@@ -103,4 +103,4 @@ Omit the gate when the job must always involve the LLM (e.g. "summarize my inbox
 
 ## Why Crons, Not Heartbeat
 
-Heartbeat runs periodic turns inside the main session, paying full context cost (170k-210k tokens on a busy session) every tick. Isolated crons start fresh each run — token cost is fixed and predictable, and you control the model, schedule, and delivery per job.
+[Heartbeat](https://docs.openclaw.ai/gateway/heartbeat) runs periodic turns inside the main session, paying full context cost (170k-210k tokens on a busy session) every tick. Isolated crons start fresh each run — token cost is fixed and predictable, and you control the model, schedule, and delivery per job. See [cron vs heartbeat](https://docs.openclaw.ai/automation/cron-vs-heartbeat).
