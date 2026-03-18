@@ -11,7 +11,7 @@ import os
 import subprocess
 import sys
 
-OPENCLAW_DIR = os.path.expanduser("~/.openclaw")
+OPENCLAW_DIR = os.environ.get("OPENCLAW_STATE_DIR", os.path.expanduser("~/.openclaw"))
 CONFIG_FILE = os.path.join(OPENCLAW_DIR, "openclaw.json")
 
 

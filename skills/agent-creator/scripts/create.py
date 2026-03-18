@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-OPENCLAW_DIR = os.path.expanduser("~/.openclaw")
+OPENCLAW_DIR = os.environ.get("OPENCLAW_STATE_DIR", os.path.expanduser("~/.openclaw"))
 
 AGENTS_MD_TEMPLATE = """# {name} {emoji}
 

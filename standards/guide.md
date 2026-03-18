@@ -116,6 +116,55 @@ Precedence (highest first):
 
 Use shared skills for capabilities all agents need (Slack lookups, cron management). Use per-agent skills for role-specific tooling.
 
+### Skill authoring — path patterns
+
+Skills must be portable across agents and machines. Use the right path pattern for each kind of reference:
+
+| What you're referencing | Pattern | Example |
+|-------------------------|---------|---------|
+| Skill-local files (tokens, config, assets) | `Path(__file__).resolve().parent.parent` | `xero_tokens.json` in the skill root |
+| Install-level shared data | `OPENCLAW_STATE_DIR` env var | `~/.openclaw/shared/agency.db` |
+| Workspace files (memory, cron, output) | Relative from cwd | `cron/morning-brief.md` |
+| Other skills in same workspace | Relative from cwd | `skills/humi/scripts/main.py` |
+
+**Key env vars for path resolution:**
+
+- `OPENCLAW_STATE_DIR` — the install root (defaults to `~/.openclaw`). Use this for install-level data.
+- `OPENCLAW_HOME` — overrides `$HOME` (affects tilde expansion). This is *not* the install root — don't confuse the two.
+- `OPENCLAW_AGENT_DIR` — set by OpenClaw at runtime to the agent's state directory. Not the workspace.
+
+When a cron job or agent turn runs, the working directory is the agent's workspace. Relative paths in prompts and scripts resolve from there.
+
+**In SKILL.md**, use `{baseDir}` to reference the skill's own directory. OpenClaw substitutes this at load time:
+
+```markdown
+python3 {baseDir}/scripts/main.py sync
+```
+
+**Python pattern for skill-local files:**
+
+```python
+from pathlib import Path
+SKILL_DIR = Path(__file__).resolve().parent.parent  # scripts/ -> skill root
+TOKENS_FILE = SKILL_DIR / "tokens.json"
+```
+
+**Python pattern for install-level data:**
+
+```python
+from pathlib import Path
+import os
+STATE_DIR = Path(os.environ.get("OPENCLAW_STATE_DIR", str(Path.home() / ".openclaw")))
+```
+
+### Skill authoring — anti-patterns
+
+- **Hardcoded absolute paths** (`/Users/me/.openclaw/...`) — breaks on other machines
+- **`~/...` in Python** — tilde expansion is a shell feature; use `Path.home()` or `os.path.expanduser()`
+- **`OPENCLAW_HOME` for install-level data** — use `OPENCLAW_STATE_DIR` instead; `OPENCLAW_HOME` overrides `$HOME`, not the state root
+- **Duplicate data sources** (JSON file + DB table for the same data) — pick one source of truth
+- **Cross-skill imports** — skills should be isolated and portable; the agent orchestrates between them, not the skills themselves
+
 ## Git Tracking
 
 Track config changes in `~/.openclaw/` with git:
