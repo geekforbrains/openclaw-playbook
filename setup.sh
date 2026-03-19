@@ -139,6 +139,17 @@ else
 fi
 
 info "Building OpenClaw (make install)..."
+
+# On Linux, npm link fails without sudo because it targets /usr/lib/node_modules.
+# Configure a user-writable global prefix so npm link works unprivileged.
+if [[ "$(uname)" == "Linux" ]]; then
+  NPM_GLOBAL="$HOME/.npm-global"
+  mkdir -p "$NPM_GLOBAL"
+  npm config set prefix "$NPM_GLOBAL"
+  export PATH="$NPM_GLOBAL/bin:$PATH"
+  info "Set npm global prefix to $NPM_GLOBAL (avoids sudo for npm link)"
+fi
+
 make install
 ok "OpenClaw installed: $(openclaw --version 2>/dev/null || echo 'version check failed')"
 echo ""
@@ -370,6 +381,14 @@ echo "Two agents scaffolded:"
 echo "  🛡️  $AGENT_NAME (admin — full access)"
 echo "  🔍 Researcher (constrained — web search + file access only)"
 echo ""
+# On Linux, remind user to add npm-global to their shell profile
+if [[ "$(uname)" == "Linux" && -n "${NPM_GLOBAL:-}" ]]; then
+  echo -e "${YELLOW}NOTE:${NC} npm global prefix was set to $NPM_GLOBAL"
+  echo "  Add this to your shell profile (~/.bashrc or ~/.zshrc):"
+  echo "    export PATH=\"$NPM_GLOBAL/bin:\$PATH\""
+  echo ""
+fi
+
 echo "Next steps:"
 echo ""
 echo "  1. Fill in your API keys and Slack tokens:"
