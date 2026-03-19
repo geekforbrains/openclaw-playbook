@@ -54,6 +54,8 @@ Key decisions:
 
 Every agent starts fully locked down. Open capabilities per-agent based on what the role requires. See [tool policy vs sandbox vs elevated](https://docs.openclaw.ai/gateway/sandbox-vs-tool-policy-vs-elevated).
 
+The deny-all baseline goes in the **top-level `tools`** block (not in `agents.defaults` — that key doesn't support `tools`):
+
 ```json
 {
   "tools": {
@@ -66,6 +68,8 @@ Every agent starts fully locked down. Open capabilities per-agent based on what 
   }
 }
 ```
+
+`exec.security` valid values: `"deny"`, `"allowlist"`, `"full"`.
 
 Override per-agent in `agents.list[].tools`:
 

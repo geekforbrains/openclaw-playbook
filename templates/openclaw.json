@@ -16,15 +16,7 @@
       "thinkingDefault": "adaptive",
       "compaction": { "mode": "safeguard" },
       "heartbeat": { "every": "0m" },
-      "skipBootstrap": true,
-      "tools": {
-        "profile": "messaging",
-        "allow": [],
-        "deny": ["*"],
-        "fs": { "workspaceOnly": true },
-        "exec": { "security": "deny" },
-        "elevated": { "enabled": false }
-      }
+      "skipBootstrap": true
     },
     "list": [
       {
@@ -37,7 +29,7 @@
           "allow": [],
           "deny": [],
           "fs": { "workspaceOnly": false },
-          "exec": { "security": "allow" },
+          "exec": { "security": "full" },
           "elevated": { "enabled": true }
         }
       },
@@ -53,6 +45,15 @@
         }
       }
     ]
+  },
+
+  "tools": {
+    "profile": "messaging",
+    "allow": [],
+    "deny": ["*"],
+    "fs": { "workspaceOnly": true },
+    "exec": { "security": "deny" },
+    "elevated": { "enabled": false }
   },
 
   "channels": {
