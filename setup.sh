@@ -303,8 +303,8 @@ slack = template.get('channels', {}).get('slack', {})
 accounts = slack.get('accounts', {})
 if 'ADMIN_ID' in accounts:
     accounts[agent_id] = {
-        'botToken': f'\${SLACK_BOT_TOKEN_{agent_upper}}',
-        'appToken': f'\${SLACK_APP_TOKEN_{agent_upper}}'
+        'botToken': '\${SLACK_BOT_TOKEN_' + agent_upper + '}',
+        'appToken': '\${SLACK_APP_TOKEN_' + agent_upper + '}'
     }
     del accounts['ADMIN_ID']
 slack['defaultAccount'] = agent_id
